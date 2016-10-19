@@ -55,7 +55,7 @@ function keyval_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for keyval
 handles.output = hObject;
 
-[user, pass] = questdlg(
+[user, pass] = questdlg();
 
 % Update handles structure
 guidata(hObject, handles);
