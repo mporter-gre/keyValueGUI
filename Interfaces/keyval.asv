@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 20-Oct-2016 17:26:17
+% Last Modified by GUIDE v2.5 20-Oct-2016 14:32:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -82,7 +82,6 @@ if ~isjava(session)
     return;
 end
 
-loadKeyValLib(handles);
 populateProjects(handles);
 
 
@@ -362,7 +361,7 @@ set(handles.datasetDropdown, 'Enable', 'on');
 
 
 
-function loadKeyValLib(handles)
+function loadKeyvalLib(handles)
 global session
 
 secCon = session.getSecurityContexts;
@@ -378,7 +377,6 @@ for thisMap = 1:numMaps
     for thisKey = 0:numKeys-1
         keyLib{counter} = char(map.get(thisKey).name.getBytes');
         valLib{counter} = char(map.get(thisKey).value.getBytes');
-        counter = counter + 1;
     end
 end
 
@@ -432,9 +430,9 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes when entered data in editable cell(s) in keyValTbl.
-function keyValTbl_CellEditCallback(hObject, eventdata, handles)
-% hObject    handle to keyValTbl (see GCBO)
+% --- Executes when entered data in editable cell(s) in keyValTtbl.
+function keyValTtbl_CellEditCallback(hObject, eventdata, handles)
+% hObject    handle to keyValTtbl (see GCBO)
 % eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
 %	Indices: row and column indices of the cell(s) edited
 %	PreviousData: previous data for the cell(s) edited
@@ -449,27 +447,23 @@ eventdata.EditData
 
 
 
-% --- Executes on key press with focus on keyValTbl and none of its controls.
-function keyValTbl_KeyPressFcn(hObject, eventdata, handles)
-% hObject    handle to keyValTbl (see GCBO)
+% --- Executes on key press with focus on keyValTtbl and none of its controls.
+function keyValTtbl_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to keyValTtbl (see GCBO)
 % eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
 %	Key: name of the key that was pressed, in lower case
 %	Character: character interpretation of the key(s) that was pressed
 %	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
 % handles    structure with handles and user data (see GUIDATA)
 
-tbl = handles.keyValTbl;
-tbl.Data
 keyLib = getappdata(handles.keyval, 'keyLib');
 valLib = getappdata(handles.keyval, 'valLib');
 typeText = getappdata(handles.keyval, 'typeText');
 lastChar = eventdata.Character;
 typeText = [typeText lastChar];
-textFound = strfind(lower(keyLib), lower(typeText));
-idx = cellfun('isempty', textFound);
-textMatches = keyLib(~idx);
-set(handles.keyAutoList, 'String', textMatches);
-setappdata(handles.keyval, 'typeText', typeText);
+findstr
+tab = handles.keyValTbl;
+tab.Data
 
 
 
