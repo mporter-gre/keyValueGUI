@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 18-Oct-2016 17:34:57
+% Last Modified by GUIDE v2.5 19-Oct-2016 22:11:17
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -53,15 +53,14 @@ function keyval_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to keyval (see VARARGIN)
 
 % Choose default command line output for keyval
-handles.output = hObject;
 
-[user, pass] = questdlg();
+handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
 
 % UIWAIT makes keyval wait for user response (see UIRESUME)
-% uiwait(handles.figure1);
+% uiwait(handles.keyval);
 
 
 % --- Outputs from this function are returned to the command line.
@@ -73,6 +72,19 @@ function varargout = keyval_OutputFcn(hObject, eventdata, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
+
+global client;
+global session;
+connectionDlg;
+
+if ~isjava(session)
+    warndlg('No connection found. Please exit the application', 'No Connection', 'modal');
+    return;
+end
+
+populateProjects(handles);
+
+
 
 
 % --- Executes on selection change in projectDropdown.
@@ -213,3 +225,45 @@ function saveBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to saveBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in viewBtn.
+function viewBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to viewBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes when user attempts to close keyval.
+function keyval_CloseRequestFcn(hObject, eventdata, handles)
+% hObject    handle to keyval (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: delete(hObject) closes the figure
+global client
+global session
+
+if isjava(client)
+    client.closeSession;
+end
+delete(hObject);
+
+
+function populateProjects(handles)
+global session;
+
+projects = getProjects(session);
+numProj = projects.size;
+projNames{1} = 'Select a project';
+for thisProj = 1:numProj
+    projNames{thisProj+1} = char(projects(thisProj).getName.getValue.getBytes');
+    projIds(thisProj) = projects(thisProj).getId.getValue;
+end
+
+set(handles.projectDropdown, 'String', projNames);
+setappdata(handles.keyval, 'projects', projects);
+setappdata(handles.keyval, 'projIds', projIds);
+setappdata(handles.keyval, 'projNames', projNames);
+
+    
