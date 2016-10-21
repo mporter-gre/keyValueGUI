@@ -399,16 +399,9 @@ function keyAutoList_Callback(hObject, eventdata, handles)
 
 keyVal = get(hObject, 'Value');
 if keyVal == 1
-    [newKey, newVal] = newKeyValDlg(handles);
-    keyList = get(handles.keyAutoList, 'String');
-    valList{1} = 'Add a new value';
-    valList{2} = newVal;
-    keyList{end+1} = newKey;
-    selectValue = length(keyList);
-    set(handles.keyAutoList, 'String', keyList);
-    set(handles.valAutoList, 'String', valList);
-    set(handles.keyAutoList, 'Value', selectValue);
-    set(handles.valAutoList, 'Value', 2);
+    [newKey newVal] = newKeyValDlg(handles);
+    set(handles.valAutoList, 'Value', 1);
+    set(handles.valAutoList, 'String', 'Add new value');
 else
     keys = get(hObject, 'String');
     selectedKey = keys{keyVal};
