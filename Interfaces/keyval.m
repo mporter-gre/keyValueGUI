@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 21-Oct-2016 01:05:17
+% Last Modified by GUIDE v2.5 21-Oct-2016 21:40:52
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -165,6 +165,7 @@ set(handles.imagesListbox, 'Value', []);
 set(handles.imagesListbox, 'String', imageNameList);
 setappdata(handles.keyval, 'imageNames', imageNameList);
 setappdata(handles.keyval, 'imageIds', imageIdList);
+setappdata(handles.keyval, 'dsId', dsId);
 set(handles.imagesListbox, 'Enable', 'on');
 
 
@@ -275,6 +276,29 @@ function saveBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+imageVals = get(handles.imagesListbox, 'Value');
+projId = getappdata(handles.keyval, 'projId');
+dsId = getappdata(handles.keyval, 'dsId');
+imageIdList = getappdata(handles.keyval, 'imageIdList');
+imageIds = imageIdList(imageVals);
+numImages = length(imageIds);
+
+for thisImage = 1:numImages
+    maps = getObjectAnnotations(session, 'map', 'image', imageIds(thisImage), 'flatten', true);
+    if ~isempty(maps)
+        numMaps = length(maps);
+        for thisMap = 1:numMaps
+            %maps(thisMap).getMapValue.get(thisKey).name.getBytes'
+            %YOU ARE HERE
+            %Ask JM about adding/removing mapValues and updating annotation
+            %objects.
+        end
+        
+    end
+end
+
+
+
 
 % --- Executes on button press in viewBtn.
 function viewBtn_Callback(hObject, eventdata, handles)
@@ -358,6 +382,7 @@ end
 set(handles.datasetDropdown, 'String', dsNameList);
 setappdata(handles.keyval, 'dsNames', dsNameList);
 setappdata(handles.keyval, 'dsIds', dsIdList);
+setappdata(handles.keyval, 'projId', projId);
 set(handles.datasetDropdown, 'Enable', 'on');
 
 
@@ -383,9 +408,14 @@ for thisMap = 1:numMaps
     end
 end
 
+keyLib = unique(keyLib);
+valLib = unique(valLib);
+
 set(handles.keyAutoList, 'String', keyLib);
 setappdata(handles.keyval, 'keyLib', keyLib);
 setappdata(handles.keyval, 'valLib', valLib);
+setappdata(handles.keyval, 'maps', maps);
+setappdata(handles.keyval, 'groupId', groupId);
 
 
 % --- Executes on selection change in keyAutoList.
@@ -398,22 +428,31 @@ function keyAutoList_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from keyAutoList
 
 keyVal = get(hObject, 'Value');
+valList{1} = 'Add a new value';
 if keyVal == 1
     [newKey, newVal] = newKeyValDlg(handles);
     keyList = get(handles.keyAutoList, 'String');
-    valList{1} = 'Add a new value';
     valList{2} = newVal;
     keyList{end+1} = newKey;
     selectValue = length(keyList);
     set(handles.keyAutoList, 'String', keyList);
     set(handles.valAutoList, 'String', valList);
     set(handles.keyAutoList, 'Value', selectValue);
-    set(handles.valAutoList, 'Value', 2);
+    set(handles.valAutoList, 'Value', 1);
+    setappdata(handles.keyval, 'selectedKey', newKey);
 else
     keys = get(hObject, 'String');
     selectedKey = keys{keyVal};
-    %Do some query on this key to get values. Handle no values? Then
-    %populate valAutoList
+    vals = findValsFromKey(handles, selectedKey);
+    valList = [valList vals];
+    set(handles.valAutoList, 'String', valList);
+    setappdata(handles.keyval, 'selectedKey', selectedKey);
+end
+
+if get(handles.keyAutoList, 'Value') > 1 && get(handles.valAutoList, 'Value') > 1
+    set(handles.addPairBtn, 'Enable', 'on');
+else
+    set(handles.addPairBtn, 'Enable', 'off');
 end
 
 
@@ -438,6 +477,28 @@ function valAutoList_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns valAutoList contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from valAutoList
+
+valVal = get(hObject, 'Value');
+valList = get(hObject, 'String');
+if valVal == 1
+    selectedKey = getappdata(handles.keyval, 'selectedKey');
+    newVal = inputdlg(['Please enter the new Value for Key ' selectedKey '.'], 'New Value');
+    newVal = newVal{1};
+    valList = [valList; newVal];
+    numVals = length(valList);
+    set(hObject, 'String', valList);
+    set(hObject, 'Value', numVals);
+    setappdata(handles.keyval, 'selectedVal', newVal);
+else
+    selectedVal = valList{valVal};
+    setappdata(handles.keyval, 'selectedVal', selectedVal);
+end
+
+if get(handles.keyAutoList, 'Value') > 1 && get(handles.valAutoList, 'Value') > 1
+    set(handles.addPairBtn, 'Enable', 'on');
+else
+    set(handles.addPairBtn, 'Enable', 'off');
+end
 
 
 % --- Executes during object creation, after setting all properties.
@@ -483,4 +544,58 @@ function populateValAutoList(handles)
 keyVal = get(handles.keyAutoList, 'Value');
 keys = get(handles.keyAutoList, 'String');
 selectedkey = keys{keyVal};
+
+
+function vals = findValsFromKey(handles, key)
+
+maps = getappdata(handles.keyval, 'maps');
+counter = 1;
+numMaps = length(maps);
+for thisMap = 1:numMaps
+    map = maps(thisMap).getMapValue;
+    numKeys = length(map);
+    for thisKey = 0:numKeys-1
+        if strcmp(key, char(map.get(thisKey).name.getBytes'))
+            vals{counter} = char(map.get(thisKey).value.getBytes');
+            counter = counter + 1;
+        end
+    end
+end
+    
+
+% --- Executes on button press in addPairBtn.
+function addPairBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to addPairBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+key = {getappdata(handles.keyval, 'selectedKey')};
+val = {getappdata(handles.keyval, 'selectedVal')};
+tbl = get(handles.keyValTbl);
+data = tbl.Data;
+newRow = [key val];
+newData = [data; newRow];
+set(handles.keyValTbl, 'Data', newData);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
