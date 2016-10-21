@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 20-Oct-2016 17:26:17
+% Last Modified by GUIDE v2.5 21-Oct-2016 01:05:17
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -372,16 +372,18 @@ maps = getObjectAnnotations(session, 'map', 'image', images, 'flatten', true);
 
 numMaps = length(maps);
 counter = 1;
+keyLib{1} = 'Add new key';
 for thisMap = 1:numMaps
     map = maps(thisMap).getMapValue;
     numKeys = length(map);
     for thisKey = 0:numKeys-1
-        keyLib{counter} = char(map.get(thisKey).name.getBytes');
+        keyLib{counter+1} = char(map.get(thisKey).name.getBytes');
         valLib{counter} = char(map.get(thisKey).value.getBytes');
         counter = counter + 1;
     end
 end
 
+set(handles.keyAutoList, 'String', keyLib);
 setappdata(handles.keyval, 'keyLib', keyLib);
 setappdata(handles.keyval, 'valLib', valLib);
 
@@ -394,6 +396,18 @@ function keyAutoList_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns keyAutoList contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from keyAutoList
+
+keyVal = get(hObject, 'Value');
+if keyVal == 1
+    newKey = inputdlg('Enter a new key:', 'New key');
+    set(handles.valAutoList, 'Value', 1);
+    set(handles.valAutoList, 'String', 'Add new value');
+else
+    keys = get(hObject, 'String');
+    selectedKey = keys{keyVal};
+    %Do some query on this key to get values. Handle no values? Then
+    %populate valAutoList
+end
 
 
 % --- Executes during object creation, after setting all properties.
@@ -443,9 +457,9 @@ function keyValTbl_CellEditCallback(hObject, eventdata, handles)
 %	Error: error string when failed to convert EditData to appropriate value for Data
 % handles    structure with handles and user data (see GUIDATA)
 
-eventdata.Indices
-eventdata.NewData
-eventdata.EditData
+% eventdata.Indices
+% eventdata.NewData
+% eventdata.EditData
 
 
 
@@ -458,6 +472,8 @@ function keyValTbl_KeyPressFcn(hObject, eventdata, handles)
 %	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
 % handles    structure with handles and user data (see GUIDATA)
 
+
+keyValTbl_CellEditCallback(hObject, eventdata, handles)
 tbl = handles.keyValTbl;
 tbl.Data
 keyLib = getappdata(handles.keyval, 'keyLib');
@@ -473,17 +489,9 @@ setappdata(handles.keyval, 'typeText', typeText);
 
 
 
+function populateValAutoList(handles)
 
-
-
-
-
-
-
-
-
-
-
-
-
+keyVal = get(handles.keyAutoList, 'Value');
+keys = get(handles.keyAutoList, 'String');
+selectedkey = keys{keyVal};
 
