@@ -328,6 +328,7 @@ for thisImage = 1:numImages
         annotation = writeMapAnnotation(session, finalKeys, finalVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation');
         link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
         %Find out how to delete old annoataions.
+        %Also, deal with empty rows in the table when saving to annotation.
         %You are here.
     else
         %No map for this image? Just write the new one
