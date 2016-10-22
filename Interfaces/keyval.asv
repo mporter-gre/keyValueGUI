@@ -276,20 +276,16 @@ function saveBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-imageIdxs = get(handles.imagesListbox, 'Value')-1;
+imageIdxs = get(handles.imagesListbox, 'Value');
 projId = getappdata(handles.keyval, 'projId');
 dsId = getappdata(handles.keyval, 'dsId');
-imageIdList = getappdata(handles.keyval, 'imageIds');
-if imageIdxs == 0
-    imageIds = imageIdList;
-else
-    imageIds = imageIdList(imageIdxs);
-end
+imageIdList = getappdata(handles.keyval, 'imageIdList');
+imageIds = imageIdList(imageIdxs);
 
 tblData = get(handles.keyValTbl, 'Data');
 tblData = sortrows(tblData);
-tblKeys = tblData(:,1);
-tblVals = tblData(:,2);
+tblKeys = tblData{:,1};
+tblVals = tblData{:,2};
 
 toImages = get(handles.imagesCheck, 'Value');
 if toImages
@@ -325,14 +321,12 @@ for thisImage = 1:numImages
         pairsToAdd = find(~commonPairs);
         finalKeys = [imgKeys tblKeys(pairsToAdd)];
         finalVals = [imgVals tblVals(pairsToAdd)];
-        annotation = writeMapAnnotation(session, finalKeys, finalVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation');
-        link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
-        %Find out how to delete old annoataions.
-        %You are here.
+        annotation = writeMapAnnotation(session, finalKeys, finalVals);
+        link = linkAnnotation(session, annotation, 'image', imageIds(thisImage), 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation');
     else
         %No map for this image? Just write the new one
-        annotation = writeMapAnnotation(session, tblKeys, tblVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation');
-        link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
+        annotation = writeMapAnnotation(session, tblKeys, tblVals);
+        link = linkAnnotation(session, annotation, 'image', imageIds(thisImage), 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation');
     end
 end
 
@@ -642,10 +636,6 @@ data = tbl.Data;
 keyIdx = ismember(data(:,1), key);
 valIdx = ismember(data(:,2), val);
 commonIdxs = keyIdx .* valIdx;
-if find(commonIdxs)
-    warndlg('This key/value pair is already in the list.', 'Already added');
-    return;
-end
 numRows = length(data);
 rowAdded = 0;
 for thisRow = 1:numRows
