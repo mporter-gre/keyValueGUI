@@ -72,8 +72,14 @@ function varargout = newKeyValDlg_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 newKey = get(handles.newKeyTxt, 'String');
 newVal = get(handles.newValTxt, 'String');
+[numVals, ~] = size(newVal);
+
+for thisVal = 1:numVals
+    newValOut{thisVal} = newVal(thisVal,:);
+end
+
 varargout{1} = newKey;
-varargout{2} = newVal;
+varargout{2} = newValOut;
 delete(handles.newKeyValDlg);
 
 

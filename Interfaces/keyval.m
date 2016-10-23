@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 21-Oct-2016 21:40:52
+% Last Modified by GUIDE v2.5 23-Oct-2016 18:00:47
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -293,14 +293,17 @@ tblVals = tblData(:,2);
 
 toImages = get(handles.imagesCheck, 'Value');
 if toImages
-    mapToImages(imageIds, tblKeys, tblVals);
+    mapToImages(handles, imageIds, tblKeys, tblVals);
 end
 
+msgbox('Annotation saved', 'Saved');
 
 
-function mapToImages(imageIds, tblKeys, tblVals)
+
+function mapToImages(handles, imageIds, tblKeys, tblVals)
 global session
 
+groupId = getappdata(handles.keyval, 'groupId');
 numImages = length(imageIds);
 
 for thisImage = 1:numImages
@@ -325,14 +328,14 @@ for thisImage = 1:numImages
         pairsToAdd = find(~commonPairs);
         finalKeys = [imgKeys tblKeys(pairsToAdd)];
         finalVals = [imgVals tblVals(pairsToAdd)];
-        annotation = writeMapAnnotation(session, finalKeys, finalVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation');
+        annotation = writeMapAnnotation(session, finalKeys, finalVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation', 'group', groupId);
         link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
         %Find out how to delete old annoataions.
         %Also, deal with empty rows in the table when saving to annotation.
         %You are here.
     else
         %No map for this image? Just write the new one
-        annotation = writeMapAnnotation(session, tblKeys, tblVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation');
+        annotation = writeMapAnnotation(session, tblKeys, tblVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation', 'group', groupId);
         link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
     end
 end
@@ -440,7 +443,7 @@ counter = 1;
 keyLib{1} = 'Add new key';
 for thisMap = 1:numMaps
     map = maps(thisMap).getMapValue;
-    numKeys = length(map);
+    numKeys = map.size();
     for thisKey = 0:numKeys-1
         keyLib{counter+1} = char(map.get(thisKey).name.getBytes');
         valLib{counter} = char(map.get(thisKey).value.getBytes');
@@ -472,11 +475,17 @@ keyVal = get(hObject, 'Value');
 valList{1} = 'Add a new value';
 if keyVal == 1
     [newKey, newVal] = newKeyValDlg(handles);
+    newKey = strtrim(newKey);
+    newVal = strtrim(newVal);
+    [~, numNewVals] = size(newVal);
     keyList = get(handles.keyAutoList, 'String');
-    valList{2} = newVal;
+    valList = [valList newVal];
     keyList{end+1} = newKey;
-    newPairs{end+1,1} = newKey;
-    newPairs{end,2} = newVal;
+    
+    %Keep track of new key/val pairs
+    newKeyList(1:numNewVals,1) = {newKey};
+    newKeyValPairs = [newKeyList newVal'];
+    newPairs = [newPairs; newKeyValPairs];
     selectValue = length(keyList);
     set(handles.keyAutoList, 'String', keyList);
     set(handles.valAutoList, 'String', valList);
@@ -529,7 +538,7 @@ valList = get(hObject, 'String');
 if valVal == 1
     selectedKey = getappdata(handles.keyval, 'selectedKey');
     newVal = inputdlg(['Please enter the new Value for Key ' selectedKey '.'], 'New Value');
-    newVal = newVal{1};
+    newVal = strtrim(newVal{1});
     valList = [valList; newVal];
     newPairs{end+1,1} = selectedKey;
     newPairs{end,2} = newVal;
@@ -603,7 +612,7 @@ counter = 1;
 numMaps = length(maps);
 for thisMap = 1:numMaps
     map = maps(thisMap).getMapValue;
-    numKeys = length(map);
+    numKeys = map.size();
     for thisKey = 0:numKeys-1
         if strcmp(key, char(map.get(thisKey).name.getBytes'))
             vals{counter} = char(map.get(thisKey).value.getBytes');
@@ -623,6 +632,8 @@ if ~isempty(newPairs)
     end
 end
 
+vals = unique(vals);
+
     
     
 
@@ -640,49 +651,40 @@ key = keys(keyVal);
 val = vals(valVal);
 tbl = get(handles.keyValTbl);
 data = tbl.Data;
-keyIdx = ismember(data(:,1), key);
-valIdx = ismember(data(:,2), val);
-commonIdxs = keyIdx .* valIdx;
-if find(commonIdxs)
-    warndlg('This key/value pair is already in the list.', 'Already added');
-    return;
-end
-numRows = length(data);
-rowAdded = 0;
-for thisRow = 1:numRows
-    if isempty(data{thisRow,1})
-        data(thisRow,1) = key;
-        data(thisRow,2) = val;
-        newData = data;
-        rowAdded = 1;
-        break;
+if ~isempty(data)
+    keyIdx = ismember(data(:,1), key);
+    valIdx = ismember(data(:,2), val);
+    commonIdxs = keyIdx .* valIdx;
+    if find(commonIdxs)
+        warndlg('This key/value pair is already in the list.', 'Already added');
+        return;
     end
-end
-if rowAdded == 0
-    newRow = [key val];
-    newData = [data; newRow];
+    [numRows, ~] = size(data);
+    rowAdded = 0;
+    for thisRow = 1:numRows
+        if isempty(data{thisRow,1})
+            data(thisRow,1) = key;
+            data(thisRow,2) = val;
+            newData = data;
+            rowAdded = 1;
+            break;
+        end
+    end
+    if rowAdded == 0
+        newRow = [key val];
+        newData = [data; newRow];
+    end
+else
+    newData(1,1) = key;
+    newData(1,2) = val;
 end
 set(handles.keyValTbl, 'Data', newData);
 
 
+% --- Executes during object creation, after setting all properties.
+function keyValTbl_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to keyValTbl (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+set(hObject, 'Data', cell(0));
