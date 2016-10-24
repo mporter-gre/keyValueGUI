@@ -200,6 +200,17 @@ function imagesListbox_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns imagesListbox contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from imagesListbox
 
+imageIdx = get(hObject, 'Value')-1;
+
+if numel(imageIdx)==1
+    imageIds = getappdata(handles.keyval, 'imageIds');
+    imageId = imageIds(imageIdx);
+    setappdata(handles.keyval, 'imageId', imageId);
+    set(handles.viewBtn, 'Enable', 'on');
+else
+    set(handles.viewBtn, 'Enable', 'off');
+end
+
 
 % --- Executes during object creation, after setting all properties.
 function imagesListbox_CreateFcn(hObject, eventdata, handles)
@@ -348,11 +359,6 @@ for thisImage = 1:numImages
         maps(1).setMapValue(nv);
         
         ma = updateService.saveAndReturnObject(maps(1));
-
-%         annotation = writeMapAnnotation(session, finalKeys, finalVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation', 'group', groupId);
-%         link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
-        %Find out how to delete old annoataions.
-        %You are here.
     else
         %No map for this image? Just write the new one
         annotation = writeMapAnnotation(session, tblKeys, tblVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation', 'group', groupId);
@@ -369,6 +375,17 @@ function viewBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+viewerH = getappdata(handles.keyval, 'viewerH');
+
+if isempty(viewerH)
+    imageId = getappdata(handles.keyval, 'imageId');
+    imageKeyValViewer(handles, imageId);
+else
+    viewerH.fetchMaps(viewerH);
+    %you are here
+end
+
+
 
 % --- Executes when user attempts to close keyval.
 function keyval_CloseRequestFcn(hObject, eventdata, handles)
@@ -379,6 +396,12 @@ function keyval_CloseRequestFcn(hObject, eventdata, handles)
 % Hint: delete(hObject) closes the figure
 global client
 global session
+
+viewerH = getappdata(handles.keyval, 'viewerH');
+
+if ~isempty(viewerH)
+    delete(viewerH.imageKeyValViewer);
+end
 
 if isjava(client)
     client.closeSession;
