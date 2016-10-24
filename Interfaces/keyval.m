@@ -201,8 +201,12 @@ function imagesListbox_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from imagesListbox
 
 imageIdx = get(hObject, 'Value')-1;
+imageNames = get(hObject, 'String');
+imageName = imageNames{imageIdx+1};
+lastChar = imageName(end);
 
-if numel(imageIdx)==1
+
+if numel(imageIdx)==1 && strcmp(lastChar, '*')
     imageIds = getappdata(handles.keyval, 'imageIds');
     imageId = imageIds(imageIdx);
     setappdata(handles.keyval, 'imageId', imageId);
@@ -210,6 +214,8 @@ if numel(imageIdx)==1
 else
     set(handles.viewBtn, 'Enable', 'off');
 end
+
+setappdata(handles.keyval, 'imageName', imageName');
 
 
 % --- Executes during object creation, after setting all properties.
@@ -376,14 +382,14 @@ function viewBtn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 viewerH = getappdata(handles.keyval, 'viewerH');
+imageId = getappdata(handles.keyval, 'imageId');
+imageName = getappdata(handles.keyval, 'imageName');
 
-if isempty(viewerH)
-    imageId = getappdata(handles.keyval, 'imageId');
-    imageKeyValViewer(handles, imageId);
-else
-    viewerH.fetchMaps(viewerH);
-    %you are here
+if ~isempty(viewerH)
+    delete(viewerH.imageKeyValViewer);
 end
+imageKeyValViewer(handles, imageId, imageName');
+
 
 
 
@@ -414,7 +420,7 @@ global session;
 
 projects = getProjects(session);
 numProj = projects.size;
-projNames{1} = 'Select a project';
+projNames{1} = 'Select a Project';
 for thisProj = 1:numProj
     projNameId{thisProj,1} = char(projects(thisProj).getName.getValue.getBytes');
     projNameId{thisProj,2} = projects(thisProj).getId.getValue;
@@ -466,6 +472,10 @@ for thisDs = 1:numDs
 end
 
 set(handles.datasetDropdown, 'String', dsNameList);
+set(handles.datasetDropdown, 'Value', 1);
+set(handles.imagesListbox, 'Value', 1);
+set(handles.imagesListbox, 'String', 'All images in dataset');
+set(handles.imagesListbox, 'Enable', 'off');
 setappdata(handles.keyval, 'dsNames', dsNameList);
 setappdata(handles.keyval, 'dsIds', dsIdList);
 setappdata(handles.keyval, 'projId', projId);
@@ -483,7 +493,7 @@ maps = getObjectAnnotations(session, 'map', 'image', images, 'flatten', true);
 
 numMaps = length(maps);
 counter = 1;
-keyLib{1} = 'Add new key';
+keyLib{1} = 'Add new key-value pairs';
 for thisMap = 1:numMaps
     map = maps(thisMap).getMapValue;
     numKeys = map.size();
@@ -630,7 +640,7 @@ newPairs = getappdata(handles.keyval, 'newPairs');
 tblIdx = eventdata.Indices;
 tblData = hObject.Data;
 key = tblData{tblIdx(1), 1};
-newVal = tblData{tblIdx(1), tblIdx(2)};
+newVal = eventdata.NewData;
 
 vals = findValsFromKey(handles, key);
 valExists = ismember(newVal, vals);
@@ -639,10 +649,17 @@ if valExists
     return;
 end
 
+answer = questdlg([{'This looks like a new Value.'};{'Would you like to add it to the list?'}], 'New Value', 'Yes', 'No', 'Yes');
+
+if strcmp(answer, 'No')
+    tblData{tblIdx(1), tblIdx(2)} = eventdata.PreviousData;
+    set(handles.keyValTbl, 'Data', tblData);
+    return;
+end
 keys = get(handles.keyAutoList, 'String');
 keyIdx = ismember(keys, key);
 keyIdx = find(keyIdx);
-valString = ['Add new value', vals, newVal];
+valString = ['Add a new value', vals, newVal];
 valIdx = length(valString);
 set(handles.keyAutoList, 'Value', keyIdx);
 set(handles.valAutoList, 'Value', valIdx);

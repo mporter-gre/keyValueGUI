@@ -22,7 +22,7 @@ function varargout = imageKeyValViewer(varargin)
 
 % Edit the above text to modify the response to help imageKeyValViewer
 
-% Last Modified by GUIDE v2.5 24-Oct-2016 17:18:13
+% Last Modified by GUIDE v2.5 24-Oct-2016 21:17:02
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -57,12 +57,14 @@ handles.output = hObject;
 
 parentHandles = varargin{1};
 imageId = varargin{2};
+imageName = varargin{3};
 
 handles.parentHandles = parentHandles;
 
 setappdata(handles.imageKeyValViewer, 'parentHandles', parentHandles);
 setappdata(handles.imageKeyValViewer, 'imageId', imageId);
 setappdata(parentHandles.keyval, 'viewerH', handles);
+set(handles.imageNameLbl, 'String', imageName(1:end-2));
 
 fetchMaps(handles);
 
@@ -144,3 +146,16 @@ function keyValTbl_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 
 set(hObject, 'Data', cell(0));
+
+
+% --- Executes on mouse press over figure background.
+function imageKeyValViewer_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to imageKeyValViewer (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+currKey = eventdata.Key
+
+if strcmpi(currKey, 'F5')
+    fetchMaps(handles);
+end
