@@ -150,8 +150,16 @@ imageNameId{numImages,2} = [];
 dsNameList{numImages} = [];
 
 for thisImg = 1:numImages
-    imageNameId{thisImg,1} = char(images(thisImg).getName.getValue.getBytes');
-    imageNameId{thisImg,2} = num2str(images(thisImg).getId.getValue);
+    imageName = char(images(thisImg).getName.getValue.getBytes');
+    imageId = images(thisImg).getId.getValue;
+    %Check for a map attached to this image
+    maps = getObjectAnnotations(session, 'map', 'image', imageId, 'flatten', true);
+    if ~isempty(maps)
+        %Add an asteris to the image name
+        imageName = [imageName ' *'];
+    end
+    imageNameId{thisImg,1} = imageName;
+    imageNameId{thisImg,2} = num2str(imageId);
 end
 
 imageNameId = sortrows(imageNameId);
@@ -303,6 +311,8 @@ msgbox('Annotation saved', 'Saved');
 function mapToImages(handles, imageIds, tblKeys, tblVals)
 global session
 
+updateService = session.getUpdateService;
+contexts = session.getSecurityContexts;
 groupId = getappdata(handles.keyval, 'groupId');
 numImages = length(imageIds);
 
@@ -314,9 +324,9 @@ for thisImage = 1:numImages
         counter = 1;
         for thisMap = 1:numMaps
             map = maps(thisMap).getMapValue;
-            numKeys = length(map);
+            numKeys = map.size;
             for thisKey = 0:numKeys-1
-                imgKeys{counter+1} = char(map.get(thisKey).name.getBytes');
+                imgKeys{counter} = char(map.get(thisKey).name.getBytes');
                 imgVals{counter} = char(map.get(thisKey).value.getBytes');
                 counter = counter + 1;
             end
@@ -326,12 +336,22 @@ for thisImage = 1:numImages
         commonVals = ismember(tblVals, imgVals);
         commonPairs = commonKeys .* commonVals;
         pairsToAdd = find(~commonPairs);
-        finalKeys = [imgKeys tblKeys(pairsToAdd)];
-        finalVals = [imgVals tblVals(pairsToAdd)];
-        annotation = writeMapAnnotation(session, finalKeys, finalVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation', 'group', groupId);
-        link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
+        finalKeys = [imgKeys tblKeys(pairsToAdd)'];
+        finalVals = [imgVals tblVals(pairsToAdd)'];
+        
+        % Create java ArrayList of NamedValue objects
+        nv = java.util.ArrayList();
+        for i = 1 : numel(finalKeys)
+            nv.add(omero.model.NamedValue(finalKeys{i}, finalVals{i}));
+        end
+        
+        maps(1).setMapValue(nv);
+        
+        ma = updateService.saveAndReturnObject(maps(1));
+
+%         annotation = writeMapAnnotation(session, finalKeys, finalVals, 'namespace', 'openmicroscopy.org/omero/client/mapAnnotation', 'group', groupId);
+%         link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
         %Find out how to delete old annoataions.
-        %Also, deal with empty rows in the table when saving to annotation.
         %You are here.
     else
         %No map for this image? Just write the new one
@@ -583,6 +603,31 @@ function keyValTbl_CellEditCallback(hObject, eventdata, handles)
 %	Error: error string when failed to convert EditData to appropriate value for Data
 % handles    structure with handles and user data (see GUIDATA)
 
+newPairs = getappdata(handles.keyval, 'newPairs');
+tblIdx = eventdata.Indices;
+tblData = hObject.Data;
+key = tblData{tblIdx(1), 1};
+newVal = tblData{tblIdx(1), tblIdx(2)};
+
+vals = findValsFromKey(handles, key);
+valExists = ismember(newVal, vals);
+
+if valExists
+    return;
+end
+
+keys = get(handles.keyAutoList, 'String');
+keyIdx = ismember(keys, key);
+keyIdx = find(keyIdx);
+valString = ['Add new value', vals, newVal];
+valIdx = length(valString);
+set(handles.keyAutoList, 'Value', keyIdx);
+set(handles.valAutoList, 'Value', valIdx);
+set(handles.valAutoList, 'String', valString);
+newPairs = [newPairs; {key, newVal}];
+setappdata(handles.keyval, 'newPairs', newPairs);
+
+
 
 
 % --- Executes on key press with focus on keyValTbl and none of its controls.
@@ -606,6 +651,7 @@ selectedkey = keys{keyVal};
 
 function vals = findValsFromKey(handles, key)
 
+vals = {};
 maps = getappdata(handles.keyval, 'maps');
 newPairs = getappdata(handles.keyval, 'newPairs');
 counter = 1;
