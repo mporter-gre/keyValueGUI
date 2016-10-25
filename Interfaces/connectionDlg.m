@@ -92,6 +92,7 @@ checkLoginHistory(handles);
 
 % Make the GUI modal
 set(handles.connectionDlg,'WindowStyle','modal')
+uicontrol(handles.userTxt);
 
 % UIWAIT makes connectionDlg wait for user response (see UIRESUME)
 uiwait(handles.connectionDlg);
@@ -105,7 +106,6 @@ function varargout = connectionDlg_OutputFcn(hObject, eventdata, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
-uicontrol(handles.userTxt);
 
 % The figure can be deleted now
 delete(handles.connectionDlg);
