@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 25-Oct-2016 12:01:47
+% Last Modified by GUIDE v2.5 25-Oct-2016 13:58:33
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -55,6 +55,10 @@ function keyval_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for keyval
 
 handles.output = hObject;
+
+startDiary(handles);
+
+positionWindow(handles)
 
 % Update handles structure
 guidata(hObject, handles);
@@ -103,6 +107,7 @@ if projVal == 1
 end
 
 populateDatasets(handles);
+setappdata(handles.keyval, 'imageId', []);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -128,6 +133,7 @@ function datasetDropdown_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from datasetDropdown
 
 populateImages(handles)
+setappdata(handles.keyval, 'imageId', []);
 
 
 
@@ -168,6 +174,14 @@ else
     set(handles.viewBtn, 'Enable', 'off');
 end
 
+%Dis/enable the save button
+tblData = get(handles.keyValTbl, 'Data');
+if ~isempty(tblData)
+    set(handles.saveBtn, 'Enable', 'on');
+else
+    set(handles.saveBtn, 'Enable', 'off');
+end
+
 setappdata(handles.keyval, 'imageName', imageName');
 
 
@@ -184,70 +198,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes on button press in loadFormBtn.
-function loadFormBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to loadFormBtn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on button press in saveFormBtn.
-function saveFormBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to saveFormBtn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-
-function proformaNameTxt_Callback(hObject, eventdata, handles)
-% hObject    handle to proformaNameTxt (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of proformaNameTxt as text
-%        str2double(get(hObject,'String')) returns contents of proformaNameTxt as a double
-
-
-% --- Executes during object creation, after setting all properties.
-function proformaNameTxt_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to proformaNameTxt (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: edit controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
-% --- Executes on button press in projectCheck.
-function projectCheck_Callback(hObject, eventdata, handles)
-% hObject    handle to projectCheck (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of projectCheck
-
-
-% --- Executes on button press in datasetCheck.
-function datasetCheck_Callback(hObject, eventdata, handles)
-% hObject    handle to datasetCheck (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of datasetCheck
-
-
-% --- Executes on button press in imagesCheck.
-function imagesCheck_Callback(hObject, eventdata, handles)
-% hObject    handle to imagesCheck (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of imagesCheck
-
-
 % --- Executes on button press in saveBtn.
 function saveBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to saveBtn (see GCBO)
@@ -255,8 +205,6 @@ function saveBtn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 imageIdxs = get(handles.imagesListbox, 'Value')-1;
-projId = getappdata(handles.keyval, 'projId');
-dsId = getappdata(handles.keyval, 'dsId');
 imageIdList = getappdata(handles.keyval, 'imageIds');
 if imageIdxs == 0
     imageIds = imageIdList;
@@ -269,10 +217,7 @@ tblData = sortrows(tblData);
 tblKeys = tblData(:,1);
 tblVals = tblData(:,2);
 
-toImages = get(handles.imagesCheck, 'Value');
-if toImages
-    mapToImages(handles, imageIds, tblKeys, tblVals);
-end
+mapToImages(handles, imageIds, tblKeys, tblVals);
 
 %Refresh image list
 populateImages(handles)
@@ -367,6 +312,9 @@ end
 if isjava(client)
     client.closeSession;
 end
+
+diary off
+
 delete(hObject);
 
 
@@ -448,12 +396,11 @@ maps = getObjectAnnotations(session, 'map', 'image', images, 'flatten', true);
 
 numMaps = length(maps);
 counter = 1;
-keyLib{1} = 'Add new key-value pairs';
 for thisMap = 1:numMaps
     map = maps(thisMap).getMapValue;
     numKeys = map.size();
     for thisKey = 0:numKeys-1
-        keyLib{counter+1} = char(map.get(thisKey).name.getBytes');
+        keyLib{counter} = char(map.get(thisKey).name.getBytes');
         valLib{counter} = char(map.get(thisKey).value.getBytes');
         counter = counter + 1;
     end
@@ -479,39 +426,18 @@ function keyAutoList_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from keyAutoList
 
 newPairs = getappdata(handles.keyval, 'newPairs');
+valList = get(handles.valAutoList, 'String');
 keyVal = get(hObject, 'Value');
-valList{1} = 'Add a new value';
-if keyVal == 1
-    [newKey, newVal] = newKeyValDlg(handles);
-    newKey = strtrim(newKey);
-    newVal = strtrim(newVal);
-    [~, numNewVals] = size(newVal);
-    keyList = get(handles.keyAutoList, 'String');
-    valList = [valList newVal];
-    keyList{end+1} = newKey;
-    
-    %Keep track of new key/val pairs
-    newKeyList(1:numNewVals,1) = {newKey};
-    newKeyValPairs = [newKeyList newVal'];
-    newPairs = [newPairs; newKeyValPairs];
-    selectValue = length(keyList);
-    set(handles.keyAutoList, 'String', keyList);
-    set(handles.valAutoList, 'String', valList);
-    set(handles.keyAutoList, 'Value', selectValue);
-    set(handles.valAutoList, 'Value', 2);
-    setappdata(handles.keyval, 'selectedKey', newKey);
-    setappdata(handles.keyval, 'newPairs', newPairs);
-else
-    keys = get(hObject, 'String');
-    selectedKey = keys{keyVal};
-    vals = findValsFromKey(handles, selectedKey);
-    valList = [valList vals];
-    set(handles.valAutoList, 'Value', 1);
-    set(handles.valAutoList, 'String', valList);
-    setappdata(handles.keyval, 'selectedKey', selectedKey);
-end
 
-if get(handles.keyAutoList, 'Value') > 1 && get(handles.valAutoList, 'Value') > 1
+keys = get(hObject, 'String');
+selectedKey = keys{keyVal};
+vals = findValsFromKey(handles, selectedKey);
+% valList = [valList vals];
+set(handles.valAutoList, 'Value', 1);
+set(handles.valAutoList, 'String', vals');
+setappdata(handles.keyval, 'selectedKey', selectedKey);
+
+if get(handles.keyAutoList, 'Value') > 0 && get(handles.valAutoList, 'Value') > 0
     set(handles.addPairBtn, 'Enable', 'on');
 else
     set(handles.addPairBtn, 'Enable', 'off');
@@ -543,24 +469,11 @@ function valAutoList_Callback(hObject, eventdata, handles)
 newPairs = getappdata(handles.keyval, 'newPairs');
 valVal = get(hObject, 'Value');
 valList = get(hObject, 'String');
-if valVal == 1
-    selectedKey = getappdata(handles.keyval, 'selectedKey');
-    newVal = inputdlg(['Please enter the new Value for Key ' selectedKey '.'], 'New Value');
-    newVal = strtrim(newVal{1});
-    valList = [valList; newVal];
-    newPairs{end+1,1} = selectedKey;
-    newPairs{end,2} = newVal;
-    numVals = length(valList);
-    set(hObject, 'String', valList);
-    set(hObject, 'Value', numVals);
-    setappdata(handles.keyval, 'selectedVal', newVal);
-    setappdata(handles.keyval, 'newPairs', newPairs);
-else
-    selectedVal = valList{valVal};
-    setappdata(handles.keyval, 'selectedVal', selectedVal);
-end
 
-if get(handles.keyAutoList, 'Value') > 1 && get(handles.valAutoList, 'Value') > 1
+selectedVal = valList{valVal};
+setappdata(handles.keyval, 'selectedVal', selectedVal);
+
+if get(handles.keyAutoList, 'Value') > 0 && get(handles.valAutoList, 'Value') > 0
     set(handles.addPairBtn, 'Enable', 'on');
 else
     set(handles.addPairBtn, 'Enable', 'off');
@@ -614,7 +527,7 @@ end
 keys = get(handles.keyAutoList, 'String');
 keyIdx = ismember(keys, key);
 keyIdx = find(keyIdx);
-valString = ['Add a new value', vals, newVal];
+valString = ['Create a new value', vals, newVal];
 valIdx = length(valString);
 set(handles.keyAutoList, 'Value', keyIdx);
 set(handles.valAutoList, 'Value', valIdx);
@@ -719,6 +632,17 @@ else
     newData(1,1) = key;
     newData(1,2) = val;
 end
+
+%Dis/enable the save button
+imageId = getappdata(handles.keyval, 'imageId');
+if ~isempty(newData) && ~isempty(imageId)
+    set(handles.saveBtn, 'Enable', 'on');
+    set(handles.removeBtn, 'Enable', 'on');
+else
+    set(handles.saveBtn, 'Enable', 'off');
+    set(handles.saveBtn, 'Enable', 'off');
+end
+
 set(handles.keyValTbl, 'Data', newData);
 
 
@@ -781,3 +705,158 @@ setappdata(handles.keyval, 'imageNames', imageNameList);
 setappdata(handles.keyval, 'imageIds', imageIdList);
 setappdata(handles.keyval, 'dsId', dsId);
 set(handles.imagesListbox, 'Enable', 'on');
+
+
+function positionWindow(handles)
+
+%Get window position and dimensions
+FigPos=get(0,'DefaultFigurePosition');
+OldUnits = get(handles.keyval, 'Units');
+set(handles.keyval, 'Units', 'pixels');
+OldPos = get(handles.keyval,'Position');
+FigWidth = OldPos(3);
+FigHeight = OldPos(4);
+
+%Centre to the screen
+ScreenUnits=get(0,'Units');
+set(0,'Units','pixels');
+ScreenSize=get(0,'ScreenSize');
+set(0,'Units',ScreenUnits);
+
+FigPos(1)=1/2*(ScreenSize(3)-FigWidth);
+FigPos(2)=2/3*(ScreenSize(4)-FigHeight);
+FigPos(3:4)=[FigWidth FigHeight];
+
+%Put the units back to Characters
+set(handles.keyval, 'Position', FigPos);
+set(handles.keyval, 'Units', OldUnits);
+
+
+% --- Executes on button press in removeBtn.
+function removeBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to removeBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+tblData = get(handles.keyValTbl, 'Data');
+tblIdx = getappdata(handles.keyval, 'tblIdx');
+tblData(tblIdx(1), :) = [];
+tblSize = numel(tblData);
+if tblSize == 0
+    set(handles.saveBtn, 'Enable', 'off');
+end
+set(handles.keyValTbl, 'Data', tblData);
+set(handles.removeBtn, 'Enable', 'off');
+
+
+% --- Executes when selected cell(s) is changed in keyValTbl.
+function keyValTbl_CellSelectionCallback(hObject, eventdata, handles)
+% hObject    handle to keyValTbl (see GCBO)
+% eventdata  structure with the following fields (see MATLAB.UI.CONTROL.TABLE)
+%	Indices: row and column indices of the cell(s) currently selecteds
+% handles    structure with handles and user data (see GUIDATA)
+
+tblIdx = eventdata.Indices;
+setappdata(handles.keyval, 'tblIdx', tblIdx);
+
+if ~isempty(tblIdx)
+    set(handles.removeBtn, 'Enable', 'on');
+else
+    set(handles.removeBtn, 'Enable', 'of');
+end
+
+
+
+% --- Executes on button press in createValueBtn.
+function createValueBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to createValueBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+newPairs = getappdata(handles.keyval, 'newPairs');
+valList = get(handles.valAutoList, 'String');
+
+selectedKey = getappdata(handles.keyval, 'selectedKey');
+newVal = inputdlg(['Please enter the new Value for Key ' selectedKey '.'], 'New Value');
+if isempty(newVal)
+    return;
+end
+newVal = strtrim(newVal{1});
+valList = [valList; newVal];
+newPairs{end+1,1} = selectedKey;
+newPairs{end,2} = newVal;
+numVals = length(valList);
+set(handles.valAutoList, 'String', valList);
+set(handles.valAutoList, 'Value', numVals);
+setappdata(handles.keyval, 'selectedVal', newVal);
+setappdata(handles.keyval, 'newPairs', newPairs);
+
+
+% --- Executes during object creation, after setting all properties.
+function createKeyValBtn_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to createKeyValBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+
+% --- Executes on button press in createKeyValBtn.
+function createKeyValBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to createKeyValBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+newPairs = getappdata(handles.keyval, 'newPairs');
+keys = get(handles.keyAutoList, 'String');
+keyLib = getappdata(handles.keyval, 'keyLib');
+[newKey, newVal] = newKeyValDlg;
+newKey = strtrim(newKey);
+newVal = strtrim(newVal);
+
+if ismember(newKey, keyLib)
+    msgbox('This key is already available', 'Existing key');
+    return;
+end
+
+if ismember(newKey, newPairs)
+    msgbox('This key is already available', 'Existing key');
+    return;
+end
+
+numNewVals = numel(newVal);
+
+for thisVal = 1:numNewVals
+    holder{thisVal,1} = newKey;
+    holder{thisVal,2} = newVal{thisVal};
+end
+
+newPairs = [newPairs; holder];
+keys = [keys; newKey];
+numKeys = numel(keys);
+set(handles.keyAutoList, 'Value', numKeys);
+set(handles.keyAutoList, 'String', keys);
+set(handles.valAutoList, 'Value', 1);
+set(handles.valAutoList, 'String', newVal);
+
+setappdata(handles.keyval, 'newPairs', newPairs);
+
+
+function startDiary(handles)
+
+if ispc
+    sysUserHome = getenv('userprofile');
+    omeroDir = [sysUserHome '\omero'];
+    logFile = [sysUserHome '\omero\mtoolsLog.log'];
+else
+    sysUserHome = getenv('HOME');
+    omeroDir = [sysUserHome '/omero'];
+    logFile = [sysUserHome '/omero/mtoolsLog.log'];
+end
+
+if ~isdir(omeroDir)
+    mkdir(omeroDir);
+end
+if exist(logFile, 'file') == 2
+    delete(logFile);
+end
+
+diary(logFile);

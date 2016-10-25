@@ -87,12 +87,17 @@ FigPos(3:4)=[FigWidth FigHeight];
 set(hObject, 'Position', FigPos);
 set(hObject, 'Units', OldUnits);
 
+% Make the GUI modal
+set(handles.connectionDlg,'WindowStyle','modal');
+
 %check login history
 checkLoginHistory(handles);
-
-% Make the GUI modal
-set(handles.connectionDlg,'WindowStyle','modal')
-uicontrol(handles.userTxt);
+user = get(handles.userTxt, 'String');
+if ~isempty(user)
+    uicontrol(handles.passTxt);
+else
+    uicontrol(handles.userTxt);
+end
 
 % UIWAIT makes connectionDlg wait for user response (see UIRESUME)
 uiwait(handles.connectionDlg);
