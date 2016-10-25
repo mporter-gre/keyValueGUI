@@ -127,54 +127,7 @@ function datasetDropdown_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns datasetDropdown contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from datasetDropdown
 
-global session;
-
-dsVal = get(hObject, 'Value')-1;
-if dsVal == 0
-    return;
-end
-
-dsIds = getappdata(handles.keyval, 'dsIds');
-dsId = dsIds(dsVal);
-
-images = getImages(session, 'dataset', dsId);
-
-numImages = length(images);
-if numImages == 0
-    set(handles.imagesListbox, 'Value', 1);
-    set(handles.imagesListbox, 'String', 'No images in this dataset');
-    return;
-end
-
-imageNameId{numImages,2} = [];
-dsNameList{numImages} = [];
-
-for thisImg = 1:numImages
-    imageName = char(images(thisImg).getName.getValue.getBytes');
-    imageId = images(thisImg).getId.getValue;
-    %Check for a map attached to this image
-    maps = getObjectAnnotations(session, 'map', 'image', imageId, 'flatten', true);
-    if ~isempty(maps)
-        %Add an asteris to the image name
-        imageName = [imageName ' *'];
-    end
-    imageNameId{thisImg,1} = imageName;
-    imageNameId{thisImg,2} = num2str(imageId);
-end
-
-imageNameId = sortrows(imageNameId);
-imageNameList{1} = 'All images in dataset';
-for thisImg = 1:numImages
-    imageNameList{thisImg+1} = imageNameId{thisImg, 1};
-    imageIdList(thisImg) = str2double(imageNameId{thisImg, 2});
-end
-
-set(handles.imagesListbox, 'Value', []);
-set(handles.imagesListbox, 'String', imageNameList);
-setappdata(handles.keyval, 'imageNames', imageNameList);
-setappdata(handles.keyval, 'imageIds', imageIdList);
-setappdata(handles.keyval, 'dsId', dsId);
-set(handles.imagesListbox, 'Enable', 'on');
+populateImages(handles)
 
 
 
@@ -321,6 +274,8 @@ if toImages
     mapToImages(handles, imageIds, tblKeys, tblVals);
 end
 
+%Refresh image list
+populateImages(handles)
 msgbox('Annotation saved', 'Saved');
 
 
@@ -774,3 +729,55 @@ function keyValTbl_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 
 set(hObject, 'Data', cell(0));
+
+
+function populateImages(handles)
+
+global session;
+
+dsVal = get(handles.datasetDropdown, 'Value')-1;
+if dsVal == 0
+    return;
+end
+
+dsIds = getappdata(handles.keyval, 'dsIds');
+dsId = dsIds(dsVal);
+
+images = getImages(session, 'dataset', dsId);
+
+numImages = length(images);
+if numImages == 0
+    set(handles.imagesListbox, 'Value', 1);
+    set(handles.imagesListbox, 'String', 'No images in this dataset');
+    return;
+end
+
+imageNameId{numImages,2} = [];
+dsNameList{numImages} = [];
+
+for thisImg = 1:numImages
+    imageName = char(images(thisImg).getName.getValue.getBytes');
+    imageId = images(thisImg).getId.getValue;
+    %Check for a map attached to this image
+    maps = getObjectAnnotations(session, 'map', 'image', imageId, 'flatten', true);
+    if ~isempty(maps)
+        %Add an asteris to the image name
+        imageName = [imageName ' *'];
+    end
+    imageNameId{thisImg,1} = imageName;
+    imageNameId{thisImg,2} = num2str(imageId);
+end
+
+imageNameId = sortrows(imageNameId);
+imageNameList{1} = 'All images in dataset';
+for thisImg = 1:numImages
+    imageNameList{thisImg+1} = imageNameId{thisImg, 1};
+    imageIdList(thisImg) = str2double(imageNameId{thisImg, 2});
+end
+
+set(handles.imagesListbox, 'Value', []);
+set(handles.imagesListbox, 'String', imageNameList);
+setappdata(handles.keyval, 'imageNames', imageNameList);
+setappdata(handles.keyval, 'imageIds', imageIdList);
+setappdata(handles.keyval, 'dsId', dsId);
+set(handles.imagesListbox, 'Enable', 'on');
