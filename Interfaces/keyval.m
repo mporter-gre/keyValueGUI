@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 25-Oct-2016 13:58:33
+% Last Modified by GUIDE v2.5 26-Oct-2016 14:01:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -87,6 +87,7 @@ if ~isjava(session)
 end
 
 loadKeyValLib(handles);
+populateUsers(handles);
 populateProjects(handles);
 
 
@@ -108,6 +109,7 @@ end
 
 populateDatasets(handles);
 setappdata(handles.keyval, 'imageId', []);
+
 
 
 % --- Executes during object creation, after setting all properties.
@@ -321,7 +323,9 @@ delete(hObject);
 function populateProjects(handles)
 global session;
 
-projects = getProjects(session);
+userIdToView = getappdata(handles.keyval, 'userIdToView');
+
+projects = getProjects(session, 'owner', userIdToView);
 numProj = projects.size;
 projNames{1} = 'Select a Project';
 for thisProj = 1:numProj
@@ -337,6 +341,7 @@ for thisProj = 1:numProj
 end
 
 set(handles.projectDropdown, 'String', projNames);
+set(handles.projectDropdown, 'Value', 1);
 setappdata(handles.keyval, 'projects', projects);
 setappdata(handles.keyval, 'projIds', projIds);
 setappdata(handles.keyval, 'projNames', projNames);
@@ -383,16 +388,18 @@ setappdata(handles.keyval, 'dsNames', dsNameList);
 setappdata(handles.keyval, 'dsIds', dsIdList);
 setappdata(handles.keyval, 'projId', projId);
 set(handles.datasetDropdown, 'Enable', 'on');
+set(handles.viewBtn, 'Enable', 'off');
 
 
 
 function loadKeyValLib(handles)
 global session
 
+keyLib = {};
+valLib = {};
 secCon = session.getSecurityContexts;
 groupId = secCon(1).get(0).getId.getValue;
-images = getImages(session, 'group', groupId);
-maps = getObjectAnnotations(session, 'map', 'image', images, 'flatten', true);
+maps = getObjectAnnotations(session, 'map', 'image', [], 'owner', -1, 'group', groupId, 'flatten', true);
 
 numMaps = length(maps);
 counter = 1;
@@ -406,8 +413,10 @@ for thisMap = 1:numMaps
     end
 end
 
-keyLib = unique(keyLib);
-valLib = unique(valLib);
+if ~isempty(keyLib) && ~isempty(valLib)
+    keyLib = unique(keyLib);
+    valLib = unique(valLib);
+end
 
 set(handles.keyAutoList, 'String', keyLib);
 setappdata(handles.keyval, 'keyLib', keyLib);
@@ -683,7 +692,7 @@ for thisImg = 1:numImages
     imageName = char(images(thisImg).getName.getValue.getBytes');
     imageId = images(thisImg).getId.getValue;
     %Check for a map attached to this image
-    maps = getObjectAnnotations(session, 'map', 'image', imageId, 'flatten', true);
+    maps = getObjectAnnotations(session, 'map', 'image', imageId, 'owner', -1, 'flatten', true);
     if ~isempty(maps)
         %Add an asteris to the image name
         imageName = [imageName ' *'];
@@ -705,6 +714,7 @@ setappdata(handles.keyval, 'imageNames', imageNameList);
 setappdata(handles.keyval, 'imageIds', imageIdList);
 setappdata(handles.keyval, 'dsId', dsId);
 set(handles.imagesListbox, 'Enable', 'on');
+set(handles.viewBtn, 'Enable', 'off');
 
 
 function positionWindow(handles)
@@ -845,11 +855,11 @@ function startDiary(handles)
 if ispc
     sysUserHome = getenv('userprofile');
     omeroDir = [sysUserHome '\omero'];
-    logFile = [sysUserHome '\omero\mtoolsLog.log'];
+    logFile = [sysUserHome '\omero\keyvalLog.log'];
 else
     sysUserHome = getenv('HOME');
     omeroDir = [sysUserHome '/omero'];
-    logFile = [sysUserHome '/omero/mtoolsLog.log'];
+    logFile = [sysUserHome '/omero/keyvalLog.log'];
 end
 
 if ~isdir(omeroDir)
@@ -860,3 +870,114 @@ if exist(logFile, 'file') == 2
 end
 
 diary(logFile);
+
+
+% --- Executes on selection change in userDropdown.
+function userDropdown_Callback(hObject, eventdata, handles)
+% hObject    handle to userDropdown (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns userDropdown contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from userDropdown
+
+userIdToView = getappdata(handles.keyval, 'userIdToView');
+groupUserIds = getappdata(handles.keyval, 'groupUserIds');
+groupUserNames = getappdata(handles.keyval, 'groupUserNames');
+userVal = get(handles.userDropdown, 'Value');
+newUserName = groupUserNames(userVal);
+newUserId = groupUserIds(userVal);
+if userIdToView == newUserId
+    return;
+end
+
+setappdata(handles.keyval, 'userIdToView', newUserId);
+populateProjects(handles)
+set(handles.datasetDropdown, 'Value', 1);
+set(handles.datasetDropdown, 'Enable', 'off');
+set(handles.imagesListbox, 'Enable', 'off');
+set(handles.imagesListbox, 'Value', 1);
+set(handles.imagesListbox, 'String', 'All images in dataset');
+set(handles.viewBtn, 'Enable', 'off');
+
+
+
+% --- Executes during object creation, after setting all properties.
+function userDropdown_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to userDropdown (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+function populateUsers(handles)
+global session
+
+%Get all users in the group.
+groupId = getappdata(handles.keyval, 'groupId');
+adminService = session.getAdminService;
+eventContext = adminService.getEventContext;
+username = char(eventContext.userName.getBytes');
+userId = eventContext.userId;
+groupObj = adminService.getGroup(eventContext.groupId);
+groupPermissions = groupObj.getDetails.getPermissions;
+groupRead = groupPermissions.isGroupRead;
+
+if ~groupRead
+    set(handles.userDropdown, 'String', username);
+    set(handles.userDropdown, 'Enable', 'off');
+    setappdata(handles.keyval, 'groupUserNames', username);
+    setappdata(handles.keyval, 'groupUserIds', userId);
+    setappdata(handles.keyval, 'userIdToView', userId);
+else
+    groupUserNamesIds = {};
+    groupUsers = groupObj.linkedExperimenterList;
+    userIter = groupUsers.iterator;
+    while userIter.hasNext
+        thisUser = userIter.next;
+        groupUserNamesIds{end+1,1} = char(thisUser.getOmeName.getValue.getBytes');
+        groupUserNamesIds{end,2} = num2str(thisUser.getId.getValue);
+    end
+    groupUserNamesIds = sortrows(groupUserNamesIds);
+    [numUsers, ~] = size(groupUserNamesIds);
+    groupUserNames = {};
+    groupUserIds = [];
+    for thisUser = 1:numUsers
+        groupUserNames{end+1} = groupUserNamesIds{thisUser,1};
+        groupUserIds(end+1) = str2double(groupUserNamesIds{thisUser,2});
+    end
+    userMatch = strfind(groupUserNames, username);
+    userIdx = find(not(cellfun('isempty', userMatch)));
+    set(handles.userDropdown, 'String', groupUserNames);
+    set(handles.userDropdown, 'Value', userIdx);
+    
+    setappdata(handles.keyval, 'groupUserNames', groupUserNames);
+    setappdata(handles.keyval, 'groupUserIds', groupUserIds);
+    setappdata(handles.keyval, 'userIdToView', groupUserIds(userIdx));
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -118,7 +118,7 @@ global session;
 
 imageId = getappdata(handles.imageKeyValViewer, 'imageId');
 
-maps = getObjectAnnotations(session, 'map', 'image', imageId, 'flatten', true);
+maps = getObjectAnnotations(session, 'map', 'image', imageId, 'owner', -1, 'flatten', true);
 if ~isempty(maps)
     %Get all the keyVals alread on the image
     numMaps = length(maps);
