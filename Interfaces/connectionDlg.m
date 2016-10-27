@@ -110,7 +110,8 @@ function varargout = connectionDlg_OutputFcn(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Get default command line output from handles structure
-varargout{1} = handles.output;
+username = getappdata(handles.connectionDlg, 'username');
+varargout{1} = username;
 
 % The figure can be deleted now
 delete(handles.connectionDlg);
@@ -139,6 +140,7 @@ catch
 end
 client.enableKeepAlive(60);
 saveHistory(credentials);
+setappdata(handles.connectionDlg, 'username', credentials{1});
 
 % Update handles structure
 guidata(hObject, handles);
@@ -328,22 +330,6 @@ if lastChar
     drawnow();
 end
 
-
-function populateProjects(handles)
-global session;
-
-projects = getProjects(session);
-numProj = projects.size;
-projNames{1} = 'Select a project';
-for thisProj = 1:numProj
-    projNames{thisProj+1} = char(projects(thisProj).getName.getValue.getBytes');
-    projIds(thisProj) = projects(thisProj).getId.getValue;
-end
-
-set(handles.projectDropdown, 'String', projNames);
-setappdata(handles.keyval, 'projects', projects);
-setappdata(handles.keyval, 'projIds', projIds);
-setappdata(handles.keyval, 'projNames', projNames);
 
     
 function checkLoginHistory(handles)

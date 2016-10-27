@@ -99,6 +99,7 @@ end
 
 data = get(handles.keyValTbl, 'Data');
 set(handles.parentHandles.keyValTbl, 'Data', data);
+set(handles.parentHandles.clearTblBtn, 'Enable', 'on');
 
 
 

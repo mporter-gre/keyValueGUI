@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 26-Oct-2016 14:01:38
+% Last Modified by GUIDE v2.5 27-Oct-2016 14:54:38
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -79,16 +79,25 @@ varargout{1} = handles.output;
 
 global client;
 global session;
-connectionDlg;
+username = connectionDlg;
 
 if ~isjava(session)
     warndlg('No connection found. Please exit the application', 'No Connection', 'modal');
     return;
 end
 
+adminService = session.getAdminService;
+userObj = adminService.lookupExperimenter(username);
+userId = userObj.getId.getValue;
+currDefaultGroup = char(adminService.getDefaultGroup(userId).getName.getValue.getBytes');
+currDefaultGroupId = adminService.getDefaultGroup(userId).getId.getValue;
+
+setappdata(handles.keyval, 'groupId', currDefaultGroupId);
+
 loadKeyValLib(handles);
 populateUsers(handles);
 populateProjects(handles);
+populateGroups(handles);
 
 
 
@@ -125,14 +134,14 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes on selection change in datasetDropdown.
+% --- Executes on selection change in projectDropdown.
 function datasetDropdown_Callback(hObject, eventdata, handles)
-% hObject    handle to datasetDropdown (see GCBO)
+% hObject    handle to projectDropdown (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns datasetDropdown contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from datasetDropdown
+% Hints: contents = cellstr(get(hObject,'String')) returns projectDropdown contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from projectDropdown
 
 populateImages(handles)
 setappdata(handles.keyval, 'imageId', []);
@@ -141,7 +150,7 @@ setappdata(handles.keyval, 'imageId', []);
 
 % --- Executes during object creation, after setting all properties.
 function datasetDropdown_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to datasetDropdown (see GCBO)
+% hObject    handle to projectDropdown (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -152,14 +161,14 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-% --- Executes on selection change in imagesListbox.
+% --- Executes on selection change in projectDropdown.
 function imagesListbox_Callback(hObject, eventdata, handles)
-% hObject    handle to imagesListbox (see GCBO)
+% hObject    handle to projectDropdown (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns imagesListbox contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from imagesListbox
+% Hints: contents = cellstr(get(hObject,'String')) returns projectDropdown contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from projectDropdown
 
 imageIdx = get(hObject, 'Value')-1;
 imageNames = get(hObject, 'String');
@@ -189,7 +198,7 @@ setappdata(handles.keyval, 'imageName', imageName');
 
 % --- Executes during object creation, after setting all properties.
 function imagesListbox_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to imagesListbox (see GCBO)
+% hObject    handle to projectDropdown (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -206,7 +215,7 @@ function saveBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-imageIdxs = get(handles.imagesListbox, 'Value')-1;
+imageIdxs = get(handles.projectDropdown, 'Value')-1;
 imageIdList = getappdata(handles.keyval, 'imageIds');
 if imageIdxs == 0
     imageIds = imageIdList;
@@ -326,6 +335,15 @@ global session;
 userIdToView = getappdata(handles.keyval, 'userIdToView');
 
 projects = getProjects(session, 'owner', userIdToView);
+
+if isempty(projects)
+    set(handles.projectDropdown, 'String', 'No projects for this user');
+    set(handles.projectDropdown, 'Enable', 'off');
+    return;
+else
+    set(handles.projectDropdown, 'Enable', 'on');
+end
+
 numProj = projects.size;
 projNames{1} = 'Select a Project';
 for thisProj = 1:numProj
@@ -398,7 +416,7 @@ global session
 keyLib = {};
 valLib = {};
 secCon = session.getSecurityContexts;
-groupId = secCon(1).get(0).getId.getValue;
+groupId = getappdata(handles.keyval, 'groupId');
 maps = getObjectAnnotations(session, 'map', 'image', [], 'owner', -1, 'group', groupId, 'flatten', true);
 
 numMaps = length(maps);
@@ -416,13 +434,19 @@ end
 if ~isempty(keyLib) && ~isempty(valLib)
     keyLib = unique(keyLib);
     valLib = unique(valLib);
+    set(handles.keyAutoList, 'String', keyLib);
+    set(handles.keyAutoList, 'Value', 1);
+    set(handles.keyAutoList, 'String', keyLib);
+    setappdata(handles.keyval, 'keyLib', keyLib);
+    setappdata(handles.keyval, 'valLib', valLib);
+    setappdata(handles.keyval, 'maps', maps);
+    populateValAutoList(handles);
 end
 
-set(handles.keyAutoList, 'String', keyLib);
-setappdata(handles.keyval, 'keyLib', keyLib);
-setappdata(handles.keyval, 'valLib', valLib);
+
 setappdata(handles.keyval, 'maps', maps);
 setappdata(handles.keyval, 'groupId', groupId);
+setappdata(handles.keyval, 'securityContexts', secCon);
 
 
 % --- Executes on selection change in keyAutoList.
@@ -434,6 +458,9 @@ function keyAutoList_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns keyAutoList contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from keyAutoList
 
+if isempty(get(hObject, 'String'))
+    return;
+end
 newPairs = getappdata(handles.keyval, 'newPairs');
 valList = get(handles.valAutoList, 'String');
 keyVal = get(hObject, 'Value');
@@ -441,7 +468,7 @@ keyVal = get(hObject, 'Value');
 keys = get(hObject, 'String');
 selectedKey = keys{keyVal};
 vals = findValsFromKey(handles, selectedKey);
-% valList = [valList vals];
+
 set(handles.valAutoList, 'Value', 1);
 set(handles.valAutoList, 'String', vals');
 setappdata(handles.keyval, 'selectedKey', selectedKey);
@@ -474,6 +501,10 @@ function valAutoList_Callback(hObject, eventdata, handles)
 
 % Hints: contents = cellstr(get(hObject,'String')) returns valAutoList contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from valAutoList
+
+if isempty(get(hObject, 'String'))
+    return;
+end
 
 newPairs = getappdata(handles.keyval, 'newPairs');
 valVal = get(hObject, 'Value');
@@ -563,7 +594,13 @@ function populateValAutoList(handles)
 
 keyVal = get(handles.keyAutoList, 'Value');
 keys = get(handles.keyAutoList, 'String');
-selectedkey = keys{keyVal};
+selectedKey = keys{keyVal};
+
+vals = findValsFromKey(handles, selectedKey);
+
+set(handles.valAutoList, 'Value', 1);
+set(handles.valAutoList, 'String', vals');
+setappdata(handles.keyval, 'selectedKey', selectedKey);
 
 
 function vals = findValsFromKey(handles, key)
@@ -650,8 +687,10 @@ if ~isempty(newData) && ~isempty(imageId)
 else
     set(handles.saveBtn, 'Enable', 'off');
     set(handles.saveBtn, 'Enable', 'off');
+    set(handles.clearTblBtn, 'Enable', 'off');
 end
 
+set(handles.clearTblBtn, 'Enable', 'on');
 set(handles.keyValTbl, 'Data', newData);
 
 
@@ -842,8 +881,8 @@ end
 newPairs = [newPairs; holder];
 keys = [keys; newKey];
 numKeys = numel(keys);
-set(handles.keyAutoList, 'Value', numKeys);
 set(handles.keyAutoList, 'String', keys);
+set(handles.keyAutoList, 'Value', numKeys);
 set(handles.valAutoList, 'Value', 1);
 set(handles.valAutoList, 'String', newVal);
 
@@ -872,14 +911,14 @@ end
 diary(logFile);
 
 
-% --- Executes on selection change in userDropdown.
+% --- Executes on selection change in projectDropdown.
 function userDropdown_Callback(hObject, eventdata, handles)
-% hObject    handle to userDropdown (see GCBO)
+% hObject    handle to projectDropdown (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns userDropdown contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from userDropdown
+% Hints: contents = cellstr(get(hObject,'String')) returns projectDropdown contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from projectDropdown
 
 userIdToView = getappdata(handles.keyval, 'userIdToView');
 groupUserIds = getappdata(handles.keyval, 'groupUserIds');
@@ -904,7 +943,7 @@ set(handles.viewBtn, 'Enable', 'off');
 
 % --- Executes during object creation, after setting all properties.
 function userDropdown_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to userDropdown (see GCBO)
+% hObject    handle to projectDropdown (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -963,21 +1002,101 @@ end
 
 
 
+% --- Executes on button press in clearTblBtn.
+function clearTblBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to clearTblBtn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+answer = questdlg('Are you sure you would like to clear the table?', 'Clear table?', 'Yes', 'No', 'No');
+
+if strcmp(answer, 'Yes')
+    set(handles.keyValTbl, 'Data', []);
+    set(handles.clearTblBtn, 'Enable', 'off');
+    set(handles.removeBtn, 'Enable', 'off');
+    set(handles.saveBtn, 'Enable', 'off');
+end
+
+
+
+% --- Executes on selection change in groupDropdown.
+function groupDropdown_Callback(hObject, eventdata, handles)
+% hObject    handle to groupDropdown (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns groupDropdown contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from groupDropdown
+
+global session
+
+adminService = session.getAdminService;
+secCon = getappdata(handles.keyval, 'securityContexts');
+groupIds = getappdata(handles.keyval, 'groupIds');
+groupIdx = get(hObject, 'Value');
+selectedGroupId = groupIds(groupIdx);
+
+workingGroup = adminService.getGroup(selectedGroupId);
+session.setSecurityContext(workingGroup);
+
+setappdata(handles.keyval, 'groupId', selectedGroupId);
+
+populateUsers(handles);
+populateProjects(handles);
+loadKeyValLib(handles);
+set(handles.datasetDropdown, 'Value', 1);
+set(handles.datasetDropdown, 'String', 'Select a dataset');
+set(handles.datasetDropdown, 'Enable', 'off');
+set(handles.imagesListbox, 'Value', []);
+set(handles.imagesListbox, 'String', 'All images in dataset');
+set(handles.imagesListbox, 'Enable', 'off');
 
 
 
 
 
+% --- Executes during object creation, after setting all properties.
+function groupDropdown_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to groupDropdown (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
 
 
 
 
+function populateGroups(handles)
 
+groupId = getappdata(handles.keyval, 'groupId');
+secCon = getappdata(handles.keyval, 'securityContexts');
 
+numGroups = secCon.size;
+counter = 1;
+for thisGroup = 1:numGroups
+    groupObj = secCon(1).get(thisGroup-1);
+    groupClass = class(groupObj);
+    if ~strcmpi(groupClass, 'omero.model.ExperimenterGroupI')
+        continue;
+    end
+    groupNamesIds{counter,1} = char(secCon(1).get(thisGroup-1).getName.getValue.getBytes');
+    groupNamesIds{counter,2} = secCon(1).get(thisGroup-1).getId.getValue;
+    counter = counter + 1;
+end
 
+groupNamesIds = sortrows(groupNamesIds);
+groupNames = groupNamesIds(:,1);
+groupIds = cell2mat(groupNamesIds(:,2));
 
+set(handles.groupDropdown, 'String', groupNames);
+groupIdx = find(ismember(groupIds, groupId));
+set(handles.groupDropdown, 'Value', groupIdx);
 
-
-
+setappdata(handles.keyval, 'groupNames', groupNames);
+setappdata(handles.keyval, 'groupIds', groupIds);
 
 
