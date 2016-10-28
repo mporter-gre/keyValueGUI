@@ -72,15 +72,10 @@ function varargout = newKeyValDlg_OutputFcn(hObject, eventdata, handles)
 % Get default command line output from handles structure
 newKey = get(handles.newKeyTxt, 'String');
 newVal = get(handles.newValTxt, 'String');
-cancelled = getappdata(handles.newKeyValDlg, 'cancelled');
 [numVals, ~] = size(newVal);
 
-if ~cancelled
-    for thisVal = 1:numVals
-        newValOut{thisVal} = newVal(thisVal,:);
-    end
-else
-    newValOut = [];
+for thisVal = 1:numVals
+    newValOut{thisVal} = newVal(thisVal,:);
 end
 
 varargout{1} = newKey;
@@ -158,6 +153,3 @@ function cancelBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to cancelBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-setappdata(handles.newKeyValDlg, 'cancelled', 1);
-uiresume(handles.newKeyValDlg);

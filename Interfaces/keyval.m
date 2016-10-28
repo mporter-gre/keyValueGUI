@@ -22,7 +22,7 @@ function varargout = keyval(varargin)
 
 % Edit the above text to modify the response to help keyval
 
-% Last Modified by GUIDE v2.5 27-Oct-2016 14:54:38
+% Last Modified by GUIDE v2.5 28-Oct-2016 13:38:12
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -861,12 +861,16 @@ keyLib = getappdata(handles.keyval, 'keyLib');
 newKey = strtrim(newKey);
 newVal = strtrim(newVal);
 
-if ismember(newKey, keyLib)
+if isempty(newKey)
+    return;
+end
+
+if ismember(lower(newKey), lower(keyLib))
     msgbox('This key is already available', 'Existing key');
     return;
 end
 
-if ismember(newKey, newPairs)
+if ismember(lower(newKey), lower(newPairs))
     msgbox('This key is already available', 'Existing key');
     return;
 end
@@ -1098,5 +1102,3 @@ set(handles.groupDropdown, 'Value', groupIdx);
 
 setappdata(handles.keyval, 'groupNames', groupNames);
 setappdata(handles.keyval, 'groupIds', groupIds);
-
-
