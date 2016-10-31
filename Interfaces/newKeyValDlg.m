@@ -56,6 +56,8 @@ function newKeyValDlg_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 setappdata(handles.newKeyValDlg, 'cancelled', 0);
+setappdata(handles.newKeyValDlg, 'newKeyTxt', []);
+setappdata(handles.newKeyValDlg, 'newValTxt', []);
 
 % Update handles structure
 guidata(hObject, handles);

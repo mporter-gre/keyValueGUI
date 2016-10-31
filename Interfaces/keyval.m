@@ -830,11 +830,6 @@ newVal = inputdlg(['Please enter the new Value for Key ' selectedKey '.'], 'New 
 if isempty(newVal)
     return;
 end
-if find(ismember(lower(newVal), lower(valList)))
-    warndlg('This value is already in the list', 'Value Exists.', 'modal');
-    return;
-end
-
 newVal = strtrim(newVal{1});
 valList = [valList; newVal];
 newPairs{end+1,1} = selectedKey;
