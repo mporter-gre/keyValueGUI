@@ -55,6 +55,8 @@ function newKeyValDlg_OpeningFcn(hObject, eventdata, handles, varargin)
 % Choose default command line output for newKeyValDlg
 handles.output = hObject;
 
+setappdata(handles.newKeyValDlg, 'cancelled', 0);
+
 % Update handles structure
 guidata(hObject, handles);
 
