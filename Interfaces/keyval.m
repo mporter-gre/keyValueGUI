@@ -117,6 +117,7 @@ if projVal == 1
 end
 
 populateDatasets(handles);
+disableSaving(handles);
 setappdata(handles.keyval, 'imageId', []);
 
 
@@ -143,8 +144,9 @@ function datasetDropdown_Callback(hObject, eventdata, handles)
 % Hints: contents = cellstr(get(hObject,'String')) returns projectDropdown contents as cell array
 %        contents{get(hObject,'Value')} returns selected item from projectDropdown
 
+disableSaving(handles);
 populateImages(handles)
-setappdata(handles.keyval, 'imageId', []);
+
 
 
 
@@ -215,7 +217,7 @@ function saveBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-imageIdxs = get(handles.projectDropdown, 'Value')-1;
+imageIdxs = get(handles.imagesListbox, 'Value')-1;
 imageIdList = getappdata(handles.keyval, 'imageIds');
 if imageIdxs == 0
     imageIds = imageIdList;
@@ -232,7 +234,8 @@ mapToImages(handles, imageIds, tblKeys, tblVals);
 
 %Refresh image list
 populateImages(handles)
-msgbox('Annotation saved', 'Saved');
+msgbox('Annotation saved', 'Saved', 'modal');
+uicontrol(handles.imagesListbox);
 
 
 
@@ -240,11 +243,15 @@ function mapToImages(handles, imageIds, tblKeys, tblVals)
 global session
 
 updateService = session.getUpdateService;
-contexts = session.getSecurityContexts;
 groupId = getappdata(handles.keyval, 'groupId');
 numImages = length(imageIds);
 
+progBar = waitbar(0, 'Saving...');
+
 for thisImage = 1:numImages
+    progress = thisImage/numImages;
+    waitbar(progress, progBar);
+    
     maps = getObjectAnnotations(session, 'map', 'image', imageIds(thisImage), 'flatten', true);
     if ~isempty(maps)
         %Get all the keyVals alread on the image
@@ -282,6 +289,8 @@ for thisImage = 1:numImages
         link = linkAnnotation(session, annotation, 'image', imageIds(thisImage));
     end
 end
+
+close(progBar);
 
 
 
@@ -858,12 +867,13 @@ newPairs = getappdata(handles.keyval, 'newPairs');
 keys = get(handles.keyAutoList, 'String');
 keyLib = getappdata(handles.keyval, 'keyLib');
 [newKey, newVal] = newKeyValDlg;
-newKey = strtrim(newKey);
-newVal = strtrim(newVal);
 
-if isempty(newKey)
+if isempty(newKey) || isempty(newVal)
     return;
 end
+
+newKey = strtrim(newKey);
+newVal = strtrim(newVal);
 
 if ismember(lower(newKey), lower(keyLib))
     msgbox('This key is already available', 'Existing key');
@@ -935,7 +945,8 @@ if userIdToView == newUserId
 end
 
 setappdata(handles.keyval, 'userIdToView', newUserId);
-populateProjects(handles)
+populateProjects(handles);
+disableSaving(handles);
 set(handles.datasetDropdown, 'Value', 1);
 set(handles.datasetDropdown, 'Enable', 'off');
 set(handles.imagesListbox, 'Enable', 'off');
@@ -1048,6 +1059,7 @@ setappdata(handles.keyval, 'groupId', selectedGroupId);
 populateUsers(handles);
 populateProjects(handles);
 loadKeyValLib(handles);
+disableSaving(handles);
 set(handles.datasetDropdown, 'Value', 1);
 set(handles.datasetDropdown, 'String', 'Select a dataset');
 set(handles.datasetDropdown, 'Enable', 'off');
@@ -1102,3 +1114,19 @@ set(handles.groupDropdown, 'Value', groupIdx);
 
 setappdata(handles.keyval, 'groupNames', groupNames);
 setappdata(handles.keyval, 'groupIds', groupIds);
+
+
+function disableSaving(handles)
+
+set(handles.imagesListbox, 'Value', []);
+setappdata(handles.keyval, 'imageIds', []);
+setappdata(handles.keyval, 'ImageId', []);
+set(handles.saveBtn, 'Enable', 'off');
+
+
+
+
+
+
+
+
